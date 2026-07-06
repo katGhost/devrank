@@ -8,6 +8,7 @@ Built for the **Authorized to Act: Auth0 for AI Agents** hackathon, DevRank uses
 
 ---
 
+
 ## The Problem
 
 Many developers [beginners and intermediates alike] lose momentum. They do not know what to build next, have no visibility into their own progress, and have no community accountability keeping them active. DevRank solves this with three things:

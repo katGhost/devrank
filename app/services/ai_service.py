@@ -18,26 +18,36 @@ def clean_json(content: str):
 
 
 def generate_next_projects(user_activity_summary):
-    prompt = f"""
+    prompt = """
 You are an expert senior software engineer and developer mentor.
 
 Your task is to analyze a developer profile and generate personalized project recommendations.
 
 Return ONLY valid JSON (no markdown, no explanation).
 
-FORMAT:
-[
-  {{
-    "title": "Project Title",
-    "description": "1-3 sentence explanation",
-    "learning_outcome": "What will be learned"
-  }}
-]
+JSON Schema:
+{
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+            "learning_outcome": {"type": "string"}
+        },
+        "required": ["title", "description", "learning_outcome"]
+    }
+}
+"""
 
-Developer Profile:
+    for model in MODELS:
+        prompt += f"""
+
+<Developer Profile>
 - Experience Level: {user_activity_summary.get('experience_level', 'unknown')}
 - Languages: {', '.join(user_activity_summary.get('languages_used', []))}
 - Weekly Activity: {user_activity_summary.get('commits_last_week', 0)}
+</Developer Profile>
 """
 
     for model in MODELS:
