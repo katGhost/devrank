@@ -30,5 +30,6 @@ requests==2.33.1
 SQLAlchemy==2.0.32
 typing-inspection==0.4.2
 typing_extensions==4.16.0
+gunicorn==23.0.0
 urllib3==2.6.3
 Werkzeug==3.1.7
