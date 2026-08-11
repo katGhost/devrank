@@ -1,6 +1,7 @@
 from functools import wraps
 import requests
 from flask import Blueprint, render_template, session, redirect, url_for, request, jsonify, flash
+from cachetools import Cache
 from app.oauth import oauth
 from app.config import Config
 from app.extensions import db
@@ -10,6 +11,8 @@ from app.services.leaderboard_service import get_leaderboard
 from app.services.ai_service import generate_next_projects
 from app.services.github_service import GithubService
 from app.services.token_vault_service import get_github_token_from_vault, connect_github_account
+
+cache = Cache(config={'CACHE_TYPE': 'simple'})
 
 
 app_bp = Blueprint('app', __name__)
@@ -83,7 +86,9 @@ def generate_roadmap():
 
     return redirect(url_for('app.dashboard'))
 
-@app_bp.route('/leaderboard')
+
+@app_bp.route('/leaderboard', methods=['GET'])
+@cache.cached(timeout=300)
 def leaderboard():
     if 'user_id' not in session:
         return redirect(url_for('app.home'))
