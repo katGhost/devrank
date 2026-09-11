@@ -10,7 +10,7 @@
             </h1>
             <p class="hero-subtitle">Build. Compete. Level Up.</p>
             <p class="hero-description">
-                Whether you're just starting out or sharpening your expertise, DevRank keeps you accountable with real-time rankings and achievement streaks.
+                DevRank keeps you accountable with real-time rankings, achievement streaks, and supportive community.
                 And when you’re unsure what to build next, our AI-powered roadmap suggests practical projects tailored to your experience, helping you move forward with clarity and purpose.
                 Stop wondering if you're improving. Start seeing it.
             </p>
@@ -21,8 +21,8 @@
             <div class="auth-container">
                 <h2 class="auth-title">Welcome! Login</h2>
                 <p class="mb-3" style="color: gray;">Please login using your OAuth account</p>
-                <a href="{{ url_for('app.login') }}" class="login-oauth-btn mb-4">Login</a>
-                <!-- <a href="{{ url_for('app.github_login') }}" class="login-github-btn mb-4">Login with GitHub</a> -->
+                <a href="{{ url_for('auth.login') }}" class="login-oauth-btn mb-4">Login</a>
+                <!-- <a href="{{ url_for('user.github_login') }}" class="login-github-btn mb-4">Login with GitHub</a> -->
             </div>
         </div>
     </section>

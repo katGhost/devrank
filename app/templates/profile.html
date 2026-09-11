@@ -25,10 +25,10 @@
                             Connected as <strong>{{ user.github_username }}</strong>
                         </p>
                         <div class="github-connection-buttons">
-                            <a href="{{ url_for('app.dashboard') }}" class="btn btn-dashboard-redirect mt-2">
+                            <a href="{{ url_for('dash.dashboard') }}" class="btn btn-dashboard-redirect mt-2">
                                 Go to Dashboard
                             </a>
-                            <form method="POST" action="{{ url_for('app.disconnect_github') }}" class="d-inline">
+                            <form method="POST" action="{{ url_for('user.disconnect_github') }}" class="d-inline">
                                 <button type="submit" class="btn btn-disconnect-github mt-2">
                                     Disconnect GitHub
                                 </button>
@@ -36,7 +36,7 @@
                         </div>
                     {% else %}
                         <p class="text-muted">GitHub not connected yet.</p>
-                        <a href="{{ url_for('app.github_login') }}" class="btn btn-github mt-2">
+                        <a href="{{ url_for('user.github_login') }}" class="btn btn-github mt-2">
                             <i class="fa-brands fa-github me-1"></i>
                             Connect GitHub
                         </a>

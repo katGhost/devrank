@@ -62,7 +62,7 @@
         <div class="text-center mt-5">
             <p class="text-secondary">No developers on the leaderboard yet.</p>
             {% if not session.get('github_token') %}
-                <a href="{{ url_for('app.github_login') }}" class="btn btn-github">
+                <a href="{{ url_for('user.github_login') }}" class="btn btn-github">
                     <i class="fa-brands fa-github me-1"></i>
                     Connect GitHub to appear here
                 </a>

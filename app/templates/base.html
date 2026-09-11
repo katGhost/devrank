@@ -22,17 +22,17 @@
 
             <div class="navbar-nav nav-left">
                 {% if session.get("user_id") %}
-                    <a class="nav-link" href="{{ url_for('app.dashboard') }}">
+                    <a class="nav-link" href="{{ url_for('dash.dashboard') }}">
                         <i class="fa fa-gauge-high"></i>
                         <span class="nav-text">Dashboard</span>
                     </a>
 
-                    <a class="nav-link" href="{{ url_for('app.leaderboard') }}">
+                    <a class="nav-link" href="{{ url_for('lead.leaderboard') }}">
                         <i class="fa-solid fa-trophy"></i>
                         <span class="nav-text">Leaderboard</span>
                     </a>
 
-                    <a class="nav-link" href="{{ url_for('app.profile') }}">
+                    <a class="nav-link" href="{{ url_for('user.profile') }}">
                         <i class="fa fa-user"></i>
                         <span class="nav-text">Profile</span>
                     </a>
@@ -41,12 +41,12 @@
 
             <div class="navbar-nav nav-right">
                 {% if session.get("user_id") %}
-                    <a class="nav-link logout" href="{{ url_for('app.logout') }}">
+                    <a class="nav-link logout" href="{{ url_for('auth.logout') }}">
                         <i class="fa fa-arrow-right-from-bracket"></i>
                         <span class="nav-text">Logout</span>
                     </a>
                 {% else %}
-                    <a class="nav-link login-link" href="{{ url_for('app.login') }}">
+                    <a class="nav-link login-link" href="{{ url_for('auth.login') }}">
                         <i class="fa fa-arrow-right-to-bracket"></i>
                         <span class="nav-text">Login</span>
                     </a>
