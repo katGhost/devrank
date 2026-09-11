@@ -2,22 +2,17 @@ from flask import g, flash, jsonify, redirect, render_template, url_for, session
 from app.blueprints.dashboard import dash_bp
 from app.extensions import db
 from app.models import User, Roadmap
-from app.services.leaderboard_service import get_leaderboard
 from app.services.ai_service import generate_next_projects
 from app.services.github_service import GithubService
 from app.services.token_vault_service import get_github_token_from_vault
 
 
-# Entry page
-@dash_bp.route('/')
-def home():
-    return render_template('index.html')
 
-
-@dash_bp.route('/dashboard')
+# Dashboard route with roadmap generator
+@dash_bp.route('/', methods=['GET'])
 def dashboard():
     if 'user_id' not in session:
-        return redirect(url_for('app.home'))
+        return redirect(url_for('main.home'))
 
     user = User.query.get(session.get('user_id'))
     suggestions = []
@@ -38,7 +33,7 @@ def dashboard():
 @dash_bp.route("/generate-roadmap", methods=["POST"])
 def generate_roadmap():
     if 'user_id' not in session:
-        return redirect(url_for('app.home'))
+        return redirect(url_for('main.home'))
 
     user = User.query.get(session.get('user_id'))
 
@@ -52,7 +47,7 @@ def generate_roadmap():
 
             if not github_token:
                 print("No GitHub token available")
-                return redirect(url_for('app.dashboard'))
+                return redirect(url_for('dash.dashboard'))
 
             github = GithubService(github_token)
             user_activity = github.summarize_user_activity(github_token)
@@ -75,14 +70,6 @@ def generate_roadmap():
         except Exception as e:
             db.session.rollback()
 
-    return redirect(url_for('app.dashboard'))
+    return redirect(url_for('dash.dashboard'))
 
 
-@dash_bp.route('/leaderboard', methods=['GET'])
-def leaderboard():
-    if 'user_id' not in session:
-        return redirect(url_for('app.home'))
-
-    # Fetch and display all users ranked by comprehensive scoring
-    rankings = get_leaderboard()
-    return render_template('leaderboard.html', users=rankings)
