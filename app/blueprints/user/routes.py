@@ -1,7 +1,7 @@
 from flask import g, flash, jsonify, redirect, render_template, url_for, session
 from app.extensions import db
 from app.models import User, Roadmap
-from app.blueprints.auth import oauth
+from app.blueprints.auth.oauth import oauth
 from app.services.token_vault_service import connect_github_account
 from app.blueprints.user import user_bp
 import requests
@@ -10,7 +10,7 @@ import requests
 @user_bp.route('/profile', methods=['GET'])
 def profile():
     if 'user_id' not in session:
-        return redirect(url_for('app.home'))
+        return redirect(url_for('main.home'))
 
     user = User.query.get(session.get('user_id'))
     # print(f'USER FROM DB: ', user)
@@ -23,9 +23,9 @@ def github_login():
     # only Auth0 logged-in users can connect to github
     # Good for token vault -> Auth0 needs a logged-in user identity to associate the stored GitHub token against
     if 'user_id' not in session:
-        return redirect(url_for('app.home'))
+        return redirect(url_for('main.home'))
     
-    redirect_uri = url_for('app.github_callback', _external=True)
+    redirect_uri = url_for('user.github_callback', _external=True)
     # print('GITHUB REDIRECT: ', redirect_uri)
     return oauth.github.authorize_redirect(redirect_uri)
 
@@ -61,18 +61,18 @@ def github_callback():
         user.github_token = github_token
         db.session.commit()
 
-    return redirect(url_for('app.profile'))
+    return redirect(url_for('user.profile'))
 
 
 # Disconnect github route
 @user_bp.route('/disconnect/github', methods=['POST'])
 def disconnect_github():
     if 'user_id' not in session:
-        return redirect(url_for('app.home'))
+        return redirect(url_for('main.home'))
 
     user = User.query.get(session.get('user_id'))
     if not user:
-        return redirect(url_for('app.home'))
+        return redirect(url_for('main.home'))
 
     # clear github data from DB
     user.github_token = None
@@ -83,6 +83,6 @@ def disconnect_github():
     Roadmap.query.filter_by(user_id=user.id).delete()
     db.session.commit()
 
-    return redirect(url_for('app.profile'))
+    return redirect(url_for('user.profile'))
 
 
