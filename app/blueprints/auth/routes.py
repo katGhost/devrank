@@ -1,7 +1,7 @@
 from flask import g, flash, jsonify, redirect, render_template, url_for, session
 from app.extensions import db
 from app.models import User
-from app.blueprints.auth import oauth
+from app.blueprints.auth.oauth import oauth
 from app.blueprints.auth import auth_bp
 
 
@@ -9,7 +9,7 @@ from app.blueprints.auth import auth_bp
 # OAuth login -> Auth0 Google Authentication
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    redirect_uri = url_for('app.callback', _external=True)
+    redirect_uri = url_for('auth.callback', _external=True)
     return oauth.auth0.authorize_redirect(redirect_uri)
 
 
@@ -56,7 +56,7 @@ def callback():
     # storing only the db user_id in session
     session['user_id'] = user.id
 
-    return redirect(url_for('app.profile'))
+    return redirect(url_for('user.profile'))
 
 
 # Logout
@@ -67,4 +67,4 @@ def logout():
     session.pop('github_token', None)
     session.clear()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('app.home'))  # fixed blueprint prefix
+    return redirect(url_for('main.home'))  # fixed blueprint prefix
