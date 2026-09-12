@@ -7,6 +7,8 @@ from app.blueprints.auth import auth_bp
 from app.blueprints.dashboard import dash_bp
 from app.blueprints.leaderboard import lead_bp
 from app.blueprints.user import user_bp
+from app.blueprints.community import forum_bp
+from app.blueprints.projects import projects_bp
 from app.blueprints.auth.oauth import init_oauth
 from app.extensions import db, migrate
 
@@ -38,6 +40,8 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(dash_bp, url_prefix='/dashboard')
     app.register_blueprint(lead_bp, url_prefix='/rankings')
+    app.register_blueprint(forum_bp, url_prefix='/community')
+    app.register_blueprint(projects_bp, url_prefix='/projects')
     app.register_blueprint(user_bp, url_prefix='/user')
 
     # Create tables if they do not exist
