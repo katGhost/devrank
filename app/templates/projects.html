@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Projects Hub — DevRank{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Projects Hub</h2>
+            <p class="text-muted mb-0">Find a team or start a collaborative project.</p>
+        </div>
+        {% if user.github_username %}
+            <a href="{{ url_for('project.project_new') }}" class="btn btn-success">+ New Project</a>
+        {% else %}
+            <a href="{{ url_for('user.github_login') }}" class="btn btn-outline-secondary">
+                Connect GitHub to create a project
+            </a>
+        {% endif %}
+    </div>
+
+    <!--{% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endwith %}-->
+
+    {% if not user.github_username %}
+        <div class="alert alert-warning">
+            Connect your GitHub account to create or join projects.
+            <a href="{{ url_for('user.github_login') }}" class="alert-link">Connect GitHub</a>
+        </div>
+    {% endif %}
+
+    {% if projects %}
+    <div class="row g-3">
+        {% for project in projects %}
+            <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                <h5 class="card-title fw-semibold mb-1">{{ project.title }}</h5>
+                <p class="text-muted small mb-2">
+                    by
+                    <span class="fw-medium">{{ project.owner.nickname or project.owner.name }}</span>
+                    &mdash;
+                    {{ project.created_at.strftime('%d %b %Y') }}
+                </p>
+                <p class="card-text flex-grow-1">{{ project.description | truncate(120) }}</p>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="badge bg-secondary">
+                    {{ project.member_count() }} / {{ project.member_limit() }} members
+                    </span>
+                    <a href="{{ url_for('project.project_detail', project_id=project.id) }}"
+                    class="btn btn-sm btn-outline-success">View</a>
+                </div>
+                </div>
+            </div>
+            </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <div class="text-center py-5 text-muted">
+        <p class="mb-1">No projects yet.</p>
+        {% if user.github_username %}
+            <a href="{{ url_for('project.project_new') }}" class="btn btn-success mt-2">Create the first one</a>
+        {% endif %}
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
