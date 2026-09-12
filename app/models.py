@@ -17,12 +17,9 @@ class User(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    roadmaps = db.relationship(
-        "Roadmap",
-        back_populates="user",
-        cascade="all, delete-orphan",
-        lazy="dynamic"
-    )
+    # Relaitionships
+    roadmaps = db.relationship('Roadmap', back_populates='user', cascade='all, delete-orphan', lazy='dynamic')
+    posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan', lazy='dynamic')
 
     def to_dict(self):
         return {
@@ -51,6 +48,7 @@ class Roadmap(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Relationships
     user = db.relationship("User", back_populates="roadmaps")
 
     def __repr__(self):
@@ -67,6 +65,7 @@ class Project(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Relationships
     owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('owned_projects', lazy='dynamic'))
     members = db.relationship('ProjectMember', back_populates='project', cascade='all, delete-orphan', lazy='dynamic')
 
@@ -94,6 +93,7 @@ class ProjectMember(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Relationships
     project = db.relationship('Project', back_populates='members')
     user = db.relationship('User', backref=db.backref('project_memberships', lazy='dynamic'))
 
@@ -103,3 +103,18 @@ class ProjectMember(db.Model):
 
     def __repr__(self):
         return f"<ProjectMember project_id={self.project_id} user_id={self.user_id}>"
+
+class Post(db.Model):
+    __tablename__ = 'forum_posts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', back_populates='posts')
+
+    def __repr__(self):
+        return f"<Post id={self.id} title={self.title}>"
