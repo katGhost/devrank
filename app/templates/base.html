@@ -22,18 +22,39 @@
 
             <div class="navbar-nav nav-left">
                 {% if session.get("user_id") %}
+                    <!-- Dashboard -->
                     <a class="nav-link" href="{{ url_for('dash.dashboard') }}">
-                        <i class="fa fa-gauge-high"></i>
-                        <span class="nav-text">Dashboard</span>
+                        <span class="nav-text">Home</span>
                     </a>
 
+                    <!-- Leaderboard ranking -->
                     <a class="nav-link" href="{{ url_for('lead.leaderboard') }}">
-                        <i class="fa-solid fa-trophy"></i>
-                        <span class="nav-text">Leaderboard</span>
+                        <span class="nav-text">Ranking</span>
                     </a>
 
+                    <!-- Community -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="communityDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="nav-text">Community</span>
+                        </a>
+
+                        <ul class="dropdown-menu" aria-labelledby="communityDropdown">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('forum.forum_home') }}">
+                                    Forum
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('project.projects_hub') }}">
+                                    Projects
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+
+                    <!-- Profile -->
                     <a class="nav-link" href="{{ url_for('user.profile') }}">
-                        <i class="fa fa-user"></i>
                         <span class="nav-text">Profile</span>
                     </a>
                 {% endif %}
