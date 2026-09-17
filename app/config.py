@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 load_dotenv('.env.dev', override=True)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
+print(os.environ.get("DATABASE_URL"))
+
 class Config:
     # App
     SECRET_KEY = os.getenv("SECRET_KEY")
@@ -26,8 +28,9 @@ class Config:
     # AUTH0_CUSTOM_API_CLIENT_SECRET = os.getenv("AUTH0_CUSTOM_API_CLIENT_SECRET")
     # GITHUB_CONNECTION_NAME = os.getenv("GITHUB_CONNECTION_NAME", "github")
 
-    # SQLite stored in project root
-    SQLALCHEMY_DATABASE_URI = "sqlite:///devleaderboard.db"
+    # Postgres stored in project root
+    # SQLALCHEMY_DATABASE_URI = "sqlite:///devleaderboard.db"
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
