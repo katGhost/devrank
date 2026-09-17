@@ -3,28 +3,66 @@
 
 {% block content %}
 <div class="landing-page">
-    <section class="hero-landing">
-        <div class="hero-content">
-            <h1 class="hero-title">
-                <span class="gradient-text">DevRank</span>
-            </h1>
-            <p class="hero-subtitle">Build. Compete. Level Up.</p>
-            <p class="hero-description">
-                DevRank keeps you accountable with real-time rankings, achievement streaks, and supportive community.
-                And when you’re unsure what to build next, our AI-powered roadmap suggests practical projects tailored to your experience, helping you move forward with clarity and purpose.
-                Stop wondering if you're improving. Start seeing it.
-            </p>
 
+    <!-- HERO -->
+    <section class="hero-section">
+        <div class="hero-text">
+            <h1 class="hero-headline">
+                The Developer Platform<br>that keeps you<br>
+                <em>Accountable.</em>
+            </h1>
+            <p class="hero-body">
+                Real-time rankings, achievement streaks, and an AI-powered roadmap
+                that tells you exactly what to build next — matched to where you are right now.
+            </p>
+            <a href="{{ url_for('auth.login') }}" class="cta-btn">
+                Get started <i class="fa-solid fa-arrow-right ms-2"></i>
+            </a>
         </div>
-        
-        <div class="auth-section">
-            <div class="auth-container">
-                <h2 class="auth-title">Welcome! Login</h2>
-                <p class="mb-3" style="color: gray;">Please login using your OAuth account</p>
-                <a href="{{ url_for('auth.login') }}" class="login-oauth-btn mb-4">Login</a>
-                <!-- <a href="{{ url_for('user.github_login') }}" class="login-github-btn mb-4">Login with GitHub</a> -->
+
+        <div class="hero-card-stack">
+            <!-- Auth card -->
+            <div class="auth-card">
+                <h2 class="auth-card-title">Welcome back</h2>
+                <p class="auth-card-sub">Login with your OAuth account</p>
+                <a href="{{ url_for('auth.login') }}" class="auth-login-btn">
+                    Login
+                </a>
             </div>
         </div>
     </section>
+
+    <!-- STAT STRIP -->
+    <section class="stat-strip" id="how-it-works">
+        <div class="stat-card stat-card--dark">
+            <div class="stat-card-header">
+                <span class="stat-card-icon"><i class="fa-solid fa-users"></i></span>
+                <span class="stat-card-tag">Community</span>
+            </div>
+            <p class="stat-card-text">
+                Join a growing community of developers who track progress and push each other forward.
+            </p>
+            <span class="stat-label">Active Developers</span>
+        </div>
+
+        <div class="stat-card stat-card--green">
+            <div class="stat-number">AI</div>
+            <div class="stat-unit">Roadmap</div>
+            <p class="stat-card-text">Projects suggested for your exact skill level — no guessing what to build next.</p>
+        </div>
+
+        <div class="stat-card stat-card--dark">
+            <div class="stat-card-header">
+                <span class="stat-card-icon"><i class="fa-solid fa-ranking-star"></i></span>
+                <span class="stat-card-tag">Ranking</span>
+            </div>
+            <p class="stat-card-text">
+                Daily streaks and leaderboard rankings that make progress visible and real.
+            </p>
+            
+            <span class="stat-label">Streaks</span>
+        </div>
+    </section>
+
 </div>
 {% endblock %}
