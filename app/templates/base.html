@@ -11,88 +11,86 @@
 </head>
 <body>
 
-    <nav class="navbar custom-navbar">
-        <div class="container-fluid navbar-container">
-            <span class="logo d-flex align-items-center">
+    <nav class="custom-navbar">
+        <!-- Logo -->
+        <div class="navbar-logo">
+            <a href="/" class="logo d-flex align-items-center">
                 <span class="icon me-2">
                     <i class="fa-solid fa-fire"></i>
                 </span>
                 <span class="brand">DevRank</span>
-            </span>
+            </a>
+        </div>
 
-            <div class="navbar-nav nav-left">
-                {% if session.get("user_id") %}
-                    <!-- Dashboard -->
-                    <a class="nav-link" href="{{ url_for('dash.dashboard') }}">
-                        <span class="nav-text">Home</span>
+        <!-- Nav links -->
+        <div class="navbar-center">
+            {% if session.get("user_id") %}
+                <a class="nav-link" href="{{ url_for('dash.dashboard') }}">Home</a>
+                <a class="nav-link" href="{{ url_for('lead.leaderboard') }}">Ranking</a>
+
+                <div class="nav-dropdown">
+                    <a class="nav-link dropdown-toggle-custom" href="#" id="communityToggle">
+                        Community
                     </a>
+                    <div class="nav-dropdown-menu" id="communityMenu">
+                        <a class="dropdown-item-custom" href="{{ url_for('forum.forum_home') }}">Forum</a>
+                        <a class="dropdown-item-custom" href="{{ url_for('project.projects_hub') }}">Projects</a>
+                    </div>
+                </div>
 
-                    <!-- Leaderboard ranking -->
-                    <a class="nav-link" href="{{ url_for('lead.leaderboard') }}">
-                        <span class="nav-text">Ranking</span>
-                    </a>
+                <a class="nav-link" href="{{ url_for('user.profile') }}">Profile</a>
+            {% else %}
+                <a class="nav-link" href="#how-it-works">How it works</a>
+            {% endif %}
+        </div>
 
-                    <!-- Community -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="communityDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="nav-text">Community</span>
-                        </a>
-
-                        <ul class="dropdown-menu" aria-labelledby="communityDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('forum.forum_home') }}">
-                                    Forum
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('project.projects_hub') }}">
-                                    Projects
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-
-
-                    <!-- Profile -->
-                    <a class="nav-link" href="{{ url_for('user.profile') }}">
-                        <span class="nav-text">Profile</span>
-                    </a>
-                {% endif %}
-            </div>
-
-            <div class="navbar-nav nav-right">
-                {% if session.get("user_id") %}
-                    <a class="nav-link logout" href="{{ url_for('auth.logout') }}">
-                        <i class="fa fa-arrow-right-from-bracket"></i>
-                        <span class="nav-text">Logout</span>
-                    </a>
-                {% else %}
-                    <a class="nav-link login-link" href="{{ url_for('auth.login') }}">
-                        <i class="fa fa-arrow-right-to-bracket"></i>
-                        <span class="nav-text">Login</span>
-                    </a>
-                {% endif %}
-            </div>
-
+        <!-- Auth action -->
+        <div class="navbar-right">
+            {% if session.get("user_id") %}
+                <a class="nav-btn nav-btn-ghost" href="{{ url_for('auth.logout') }}">
+                    <i class="fa fa-arrow-right-from-bracket me-1"></i> Logout
+                </a>
+            {% else %}
+                <a class="nav-btn nav-btn-primary" href="{{ url_for('auth.login') }}">
+                    Sign in
+                </a>
+            {% endif %}
         </div>
     </nav>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <header>
+            <div class="flash-wrapper">
                 {% for category, message in messages %}
-                <div class="alert alert-{{ category }} text-center mb-0" role="alert">
-                    {{ message }}
-                </div>
+                    <div class="alert alert-{{ category }} text-center mb-0" role="alert">
+                        {{ message }}
+                    </div>
                 {% endfor %}
-            </header>
+            </div>
         {% endif %}
     {% endwith %}
+
     <main>
         {% block content %}{% endblock %}
     </main>
 
-    {% block extrajs%}{% endblock %}
-    
+    {% block extrajs %}{% endblock %}
+
+    <script>
+        // Lightweight community dropdown (no Bootstrap dependency)
+        const toggle = document.getElementById('communityToggle');
+        const menu   = document.getElementById('communityMenu');
+        if (toggle && menu) {
+            toggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                menu.classList.toggle('open');
+            });
+            document.addEventListener('click', (e) => {
+                if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.remove('open');
+                }
+            });
+        }
+    </script>
 </body>
 </html>
