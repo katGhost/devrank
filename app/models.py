@@ -130,6 +130,7 @@ class Forum(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), nullable=False, unique=True)
+    slug = db.Column(db.String(128), unique=True)
 
     posts = db.relationship('Post', back_populates='forum')
     
