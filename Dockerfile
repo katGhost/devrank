@@ -42,4 +42,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://devrank-production-a95a.up.railway.app/', timeout=5)" || exit 1
 
 # Run with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "run:app"]
+CMD ["gunicorn", "--bind", "", "--workers", "4", "--timeout", "120", "run:app"]

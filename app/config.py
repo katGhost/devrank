@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-print(os.environ.get("DATABASE_URL"))
+# print(os.environ.get("DATABASE_URL"))
 
 class Config:
     # App
