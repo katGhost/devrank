@@ -29,7 +29,7 @@ jwcrypto==1.5.8
 Mako==1.4.1
 MarkupSafe==3.0.3
 packaging==26.3
-psycopg2==2.9.13
+psycopg
 psycopg2-binary==2.9.13
 pycparser==3.0
 pydantic==2.13.4
