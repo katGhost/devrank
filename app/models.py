@@ -110,14 +110,15 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     forum_id = db.Column(db.Integer, db.ForeignKey('forums.id'), nullable=False, index=True)
+
     title = db.Column(db.String(255), nullable=False)
-    body = db.Column(db.Text, nullable=False)   # Where does it belong
-    issue_address = db.Column(db.Text, nullable=True)   # What have you tried to fix the issue
+    body = db.Column(db.Text, nullable=False)
+    issue_address = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
     user = db.relationship('User', back_populates='posts')
-    forums = db.relationship('Forum', back_populates='posts')
+    forum = db.relationship('Forum', back_populates='posts')
 
     def __repr__(self):
         return f"<Post id={self.id} title={self.title}>"
@@ -126,11 +127,11 @@ class Post(db.Model):
 # Belonging | Forums
 class Forum(db.Model):
     __tablename__ = 'forums'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    
-    post = db.relationship('Post', back_populates='forums')
+    name = db.Column(db.String(128), nullable=False, unique=True)
+
+    posts = db.relationship('Post', back_populates='forum')
     
     def __repr__(self):
         return f"<Forum id={self.id} name={self.name}>"
