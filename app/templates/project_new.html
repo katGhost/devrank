@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}New Project{% endblock %}
+
+{% block content %}
+<div class="container py-4" id="projects">
+  <div class="row justify-content-center">
+    <div class="col-md-7">
+
+      <h2 class="fw-bold mb-1">Create a Project</h2>
+      <p class="text-muted mb-4">
+        Starting a project from your AI roadmap? Paste the title and description directly.
+      </p>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <form method="POST" action="{{ url_for('project.project_new') }}">
+            <div class="mb-3">
+              <label for="title" class="form-label fw-medium text-white">Project Title</label>
+              <input
+                type="text"
+                class="form-control"
+                id="projectTitle"
+                name="title"
+                maxlength="255"
+                placeholder="e.g. AI-Powered Web Scraper"
+                required
+              >
+            </div>
+            <div class="mb-4">
+              <label for="description" class="form-label fw-medium text-white">Description</label>
+              <textarea
+                class="form-control"
+                id="projectDescription"
+                name="description"
+                rows="5"
+                placeholder="What are you building, what is the goal, and what kind of collaborators are you looking for?"
+                required
+              ></textarea>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-create-project">Create Project</button>
+              <a href="{{ url_for('project.projects_hub') }}" class="btn btn-cancel-project">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <p class="text-muted small mt-3 plan-info">
+        Free tier: up to 5 members per project. Pro tier: up to 15 members.
+      </p>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

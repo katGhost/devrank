@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Community Forum{% endblock %}
+
+{% block content %}
+<div class="forum-layout">
+
+  <!-- Left Sidebar -->
+  <aside class="forum-sidebar">
+    <nav class="forum-nav">
+      <a href="{{ url_for('forum.forum_home') }}"
+         class="forum-nav-item {% if not active_category %}active{% endif %}">
+        Feed
+      </a>
+
+      <span class="forum-nav-label">Forum</span>
+
+      <a href="{{ url_for('forum.forum_home', category='general') }}"
+         class="forum-nav-item {% if active_category == 'general' %}active{% endif %}">
+        General
+      </a>
+      <a href="{{ url_for('forum.forum_home', category='python') }}"
+         class="forum-nav-item {% if active_category == 'python' %}active{% endif %}">
+        Python
+      </a>
+      <a href="{{ url_for('forum.forum_home', category='backend') }}"
+         class="forum-nav-item {% if active_category == 'backend' %}active{% endif %}">
+        Backend
+      </a>
+      <a href="{{ url_for('forum.forum_home', category='frontend') }}"
+         class="forum-nav-item {% if active_category == 'frontend' %}active{% endif %}">
+        Frontend
+      </a>
+      <a href="{{ url_for('forum.forum_home', category='javascript') }}"
+         class="forum-nav-item {% if active_category == 'javascript' %}active{% endif %}">
+        JavaScript
+      </a>
+      <a href="{{ url_for('forum.forum_home', category='hackathons') }}"
+         class="forum-nav-item {% if active_category == 'hackathons' %}active{% endif %}">
+        Hackathons
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Feed -->
+  <main class="forum-feed">
+    <div class="forum-feed-header">
+        <h1 class="forum-feed-title">Feed</h1>
+        <div class="forum-feed-actions">
+            <a href="{{ url_for('project.projects_hub') }}" class="btn-projects-hub">
+            Projects Hub
+            </a>
+            {% if session.user_id %}
+            <a href="{{ url_for('forum.new_post') }}" class="btn-new-post">
+            New post
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="main-content">
+
+        <!-- Left column: banner + posts -->
+        {% comment %} <div class="posts">
+            <div class="forum-banner">
+                <div class="forum-banner-content">
+                    <div class="forum-banner-dots">
+                        {% for i in range(9) %}<span class="dot"></span>{% endfor %}
+                    </div>
+                    <h2 class="forum-banner-heading">
+                        Welcome to <span class="banner-brand">DevRank</span> Community
+                    </h2>
+                    <p class="forum-banner-sub">
+                        Share what you're building. Ask questions. Find collaborators.
+                    </p>
+                </div>
+            </div> {% endcomment %}
+
+            <div class="forum-posts">
+                <!-- post cards rendered here later -->
+                <div class="feed">
+                    {%for post in posts%}
+                        {%if post%}
+                        <div class="post">
+                            <div class="post-header">
+                                <p class="author">{{ post.user_id }}</p>
+                                <p class="post-date">{{ post.created_at }}</p>
+                            </div>
+                            <div class="post-body">
+                                <h3 class="post-title">{{ post.title }}</h3>
+                                <span class="post-description">{{ post.body }}</span>
+                            </div>
+                        </div>
+                        {%else%}
+                        <div class="empty-posts">
+                            <p class="empty-posts-text">No posts yet. Create a post.</p>
+                        </div>
+                        {%endif%}
+                    {%endfor%}
+                </div>
+            </div>
+        </div>
+
+
+
+    </div>
+
+  </main>
+
+</div>
+{% endblock %}
