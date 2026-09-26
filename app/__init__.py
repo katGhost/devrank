@@ -3,7 +3,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask
 from dotenv import load_dotenv
 
-load_dotenv('.env', override=True)
+load_dotenv(override=True)
 # blueprints imports
 from app.blueprints.main import main_bp
 from app.blueprints.auth import auth_bp
