@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 
 
-load_dotenv('.env.dev', override=True)
+load_dotenv('.env', override=True)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 print(os.environ.get("DATABASE_URL"))
@@ -30,7 +30,7 @@ class Config:
 
     # Postgres stored in project root
     # SQLALCHEMY_DATABASE_URI = "sqlite:///devleaderboard.db"
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
+    DATABASE_URI = os.environ.get("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
