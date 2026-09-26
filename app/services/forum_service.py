@@ -1,29 +1,49 @@
 from app.extensions import db
-from app.models import User, Post
+from app.models import User, Post, Forum
 from datetime import datetime
 from slugify import slugify
 
 
+forum_names = [
+    "Python",
+    "JavaScript",
+    "React",
+    "AI",
+    "Cloud",
+    "Backend",
+    "Frontend",
+]
+
 # get all forum posts
 def get_all_posts():
     """Queries and returns all users posts for feed rendering"""
-    posts = Post.query.order_by(Post.created_at.desc())
+    posts = Post.query.all()
     
     if not posts:
         return False, 'No posts to display. Create a post'
-    
-    # slugify posts
-    # for post in posts:
-    #     post['slug'] = slugify(post['title'])
-    #     post['created_at'] = datetime.strptime(post['created_at'], '%d%m%y - %H:%M:%S')
 
     return posts
 
 
+# Get posts by forum
+def get_python_forum():
+    python_forum = Forum.query.filter_by(name="Python").first()
+    
+    if python_forum not in forum_names:
+        return False, 'Forum does not exist'
+
+    posts = python_forum.posts
+    return posts
+
+
 # create a forum post
-def create_post(user_id, title, body):
+def create_post(user_id, forum_id, title, forum, body):
+    
+    forum = Forum.query.filter_by(id=forum_id).first() 
+    
     post = Post(
         user_id=user_id,
+        forum_id=forum.id,
         title=title.strip(),
         body=body.strip()
     )
