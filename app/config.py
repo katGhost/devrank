@@ -31,7 +31,9 @@ class Config:
     # Postgres stored in project root
     # SQLALCHEMY_DATABASE_URI = "sqlite:///devleaderboard.db"
     DATABASE_URL = os.environ.get("DATABASE_URL")
-    # SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or os.environ.get('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get("SQLALCHEMY_DATABASE_URI") or DATABASE_URL
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
