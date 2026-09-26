@@ -50,7 +50,7 @@ def generate_roadmap():
                 return redirect(url_for('dash.dashboard'))
 
             github = GithubService(github_token)
-            user_activity = github.summarize_user_activity(github_token)
+            user_activity = github.summarize_user_activity()
             suggestions = generate_next_projects(user_activity)
 
             # clear old roadmap
