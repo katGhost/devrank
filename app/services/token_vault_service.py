@@ -81,5 +81,5 @@ def connect_github_account(auth0_user_id, github_access_token):
         return True
 
     except Exception as e:
-        Print(f'Linking error {e}')
+        print(f'Linking error {e}')
         return False
