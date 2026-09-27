@@ -1,6 +1,6 @@
 import requests
 from cachetools import TTLCache
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.config import Config
 
 # 1-hour in-memory cache
@@ -106,7 +106,7 @@ class GithubService:
         if cache_key in weekly_score_cache:
             return weekly_score_cache[cache_key]
 
-        since = datetime.utcnow() - timedelta(days=7)
+        since = datetime.now(timezone.utc) - timedelta(days=7)
         repos = self.get_user_repos()
         total_commits = 0
 
@@ -117,6 +117,7 @@ class GithubService:
                 github_username
             )
             total_commits += len(commits)
+            
 
         weekly_score_cache[cache_key] = total_commits
         return total_commits
@@ -126,8 +127,8 @@ class GithubService:
     summarize user activity
     """
     def summarize_user_activity(self):
-        since_last_7_days = datetime.utcnow() - timedelta(days=7)
-        since_last_year = datetime.utcnow() - timedelta(days=365)
+        since_last_7_days = datetime.now(timezone.utc) - timedelta(days=7)
+        since_last_year = datetime.now(timezone.utc) - timedelta(days=365)
 
         user = self.get_authenticated_user()
         username = user['login']
