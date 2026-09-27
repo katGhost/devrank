@@ -68,6 +68,7 @@ def generate_roadmap():
             db.session.commit()
 
         except Exception as e:
+            print(f"Roadmap generation error: {e}")
             db.session.rollback()
 
     return redirect(url_for('dash.dashboard'))
