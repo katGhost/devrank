@@ -16,6 +16,7 @@ body {
   background: #0d0f12;
   color: #e2e8f0;
   -webkit-font-smoothing: antialiased;
+  color: whitesmoke;
 }
 
 a {
@@ -740,6 +741,31 @@ tr:hover {
   gap: 12px;
 }
 
+.forum-post {
+  background: #13161d;
+  padding: 15px 25px;
+}
+
+.forum-post-header {
+  background: #1a2235;
+}
+
+.forum-post-author {
+}
+
+.forum-post-date {
+  color: #07a835;
+}
+
+.forum-post-body {
+}
+
+.forum-post-title {
+}
+
+.forum-post-description {
+}
+
 .input-area {
   padding: 10px 0;
 }
@@ -882,6 +908,35 @@ tr:hover {
 .plan-info {
   color: #09B83E !important;
 }
+
+.project-card {
+  background: #13161d;
+  border: 1px solid #232C38;
+  padding: 15px 30px;
+  margin: 10px auto;
+  border-radius: 7px;
+}
+
+.badge,
+#projectDetailTitle,
+.project-card-title {
+  color: whitesmoke;
+}
+
+
+.projectDatetime,
+#projectDatetime {
+  color: #09B83E !important;
+}
+
+#projectDetailDescription {
+  color: #64748b;
+}
+
+.btn-back-hub {
+  color: #07a835;
+}
+
 
 /* ===============PROFILE================ */
 
