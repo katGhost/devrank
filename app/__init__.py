@@ -33,7 +33,9 @@ def create_app():
     )
 
     # Initialize extensions
-    cache.init_app(app, config={ 'CACHE_TYPE': 'SimpleCache' })
+    app.config.setdefault('CACHE_TYPE', 'SimpleCache')
+    app.config.setdefault('CACHE_DEFAULT_TIMEOUT', 300)
+    cache.init_app(app)
     db.init_app(app)
     init_oauth(app)
     
