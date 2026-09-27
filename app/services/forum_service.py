@@ -1,5 +1,5 @@
 from app.extensions import db
-from app.models import User, Post, Forum
+from app.models import User, Post, Forum, Comment
 from datetime import datetime
 from slugify import slugify
 
@@ -33,6 +33,10 @@ def get_all_forums():
 def get_all_posts():
     """Return all posts ordered by newest first."""
     return Post.query.order_by(Post.created_at.desc()).all()
+
+def get_all_comments():
+    """Return all comments ordered by newest first"""
+    return Comment.query.order_by(Comment.created_at.desc()).all()
 
 
 def get_forum_posts(forum_name):
