@@ -19,7 +19,7 @@ def get_management_api_token():
             "grant_type": "client_credentials",
             "client_id": AUTH0_CUSTOM_API_CLIENT_ID,
             "client_secret": AUTH0_CUSTOM_API_CLIENT_SECRET,
-            "audience": f"https://{AUTH0_AUDIENCE}/",
+            "audience": AUTH0_AUDIENCE,
         }
     )
     response.raise_for_status()
@@ -53,6 +53,7 @@ def get_github_token_from_vault(auth0_user_id):
         return None
 
     except Exception as e:
+        print(f'Token vault error: {e}')
         return None
 
 
@@ -64,7 +65,7 @@ def connect_github_account(auth0_user_id, github_access_token):
         encoded_user_id = quote(auth0_user_id, safe='')
 
         response = requests.post(
-            f"https://{AUTH0_AUDIENCE}/users/{encoded_user_id}/identities",
+            f"https://{AUTH0_DOMAIN}/api/v2/users/{encoded_user_id}/identities",
             headers={
                 "Authorization": f"Bearer {mgmt_token}",
                 "Content-Type": "application/json",
@@ -80,4 +81,5 @@ def connect_github_account(auth0_user_id, github_access_token):
         return True
 
     except Exception as e:
+        Print(f'Linking error {e}')
         return False
