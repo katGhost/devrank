@@ -20,6 +20,7 @@ class User(db.Model):
     # Relaitionships
     roadmaps = db.relationship('Roadmap', back_populates='user', cascade='all, delete-orphan', lazy='dynamic')
     posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan', lazy='dynamic')
+    comments = db.relationship('Comment', back_populates='user')
 
     def to_dict(self):
         return {
@@ -119,6 +120,7 @@ class Post(db.Model):
     # Relationships
     user = db.relationship('User', back_populates='posts')
     forum = db.relationship('Forum', back_populates='posts')
+    comments = db.relationship('Comment', back_populates='post', lazy='dynamic')
 
     def __repr__(self):
         return f"<Post id={self.id} title={self.title}>"
@@ -136,3 +138,25 @@ class Forum(db.Model):
     
     def __repr__(self):
         return f"<Forum id={self.id} name={self.name}>"
+
+
+class Comment(db.Model):
+    __tablename__ = 'forum_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('forum_posts.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # Self-referential for threaded replies
+    parent_id = db.Column(db.Integer, db.ForeignKey('forum_comments.id'), nullable=True, index=True)
+    replies = db.relationship('Comment', backref=db.backref('parent', remote_side=[id]), lazy='dynamic')
+
+    # Relationships
+    user = db.relationship('User', back_populates='comments')
+    post = db.relationship('Post', back_populates='comments')
+
+    def __repr__(self):
+        return f"<Comment id={self.id} post_id={self.post_id}>"
+

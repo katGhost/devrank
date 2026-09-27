@@ -94,20 +94,12 @@
             <div class="collab-call-badge">Collaboration</div>
             <div class="collab-call-body">
                 <p class="collab-call-text">
-                    Got a generated roadmap project you can't tackle alone? Post a collaboration request and let the community help you build it.
+                    Got a generated roadmap project you can't tackle alone? Post a collaboration request in the community and let others help you build it.
                 </p>
                 {% if session.user_id %}
                 <a href="{{ url_for('forum.new_post') }}?category=general&collab=1" class="collab-call-link">
                     Post a collaboration request
                 </a>
-                <!-- Collaboration calls, answer buttons -->
-                <div class="collab-call-container">
-                    <!-- for call in calls render call -->
-                    <div class="collab-call">
-                        <!-- collaboration tied to caller project_id -->
-                        <a href="#" class="answer-collab-call">Explore collab</a>
-                    </div>
-                </div>
                 {% else %}
                 <a href="{{ url_for('auth.login') }}" class="collab-call-link">
                     Log in to post
