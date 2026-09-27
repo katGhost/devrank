@@ -19,6 +19,7 @@
                 </thead>
                 <tbody>
                     {% for rank in users %}
+                    {% cache 60*5 %}
                     <tr>
                         <td>
                             {% if loop.index == 1 %}
@@ -54,6 +55,7 @@
                             <span class="badge bg-success fs-6">{{ rank.score }}</span>
                         </td>
                     </tr>
+                    {% endcache %}
                     {% endfor %}
                 </tbody>
             </table>
