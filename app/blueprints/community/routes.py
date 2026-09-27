@@ -2,9 +2,11 @@ from flask import flash, redirect, request, render_template, url_for, session
 from app.models import User, Forum
 from app.services.forum_service import (
     get_all_posts, get_forum_posts, get_trending_posts,
-    create_post, FORUM_NAMES
+    create_post, FORUM_NAMES, get_all_forums, get_all_comments
 )
+
 from app.blueprints.community import forum_bp
+
 
 
 @forum_bp.route('/')
@@ -14,13 +16,16 @@ def forum_home():
 
     posts = get_all_posts()
     trending_posts = get_trending_posts()
+    forums = get_all_forums()
+    comments = get_all_comments()
 
     return render_template(
         'forum.html',
         posts=posts,
         trending_posts=trending_posts,
         active_category=None,
-        forums=FORUM_NAMES
+        forums=forums,
+        comments=comments
     )
 
 
@@ -70,11 +75,12 @@ def forum_posts(forum_name):
         return redirect(url_for('forum.forum_home'))
 
     trending_posts = get_trending_posts()
+    forums = get_all_forums()
 
     return render_template(
         'forum.html',
         posts=posts,
         trending_posts=trending_posts,
         active_category=forum_name,
-        forums=FORUM_NAMES
+        forums=forums
     )
