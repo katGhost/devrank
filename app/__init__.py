@@ -54,7 +54,7 @@ def create_app():
     # Create tables if they do not exist
     with app.app_context():
         db.create_all()
-        seed_forums()   # seed frums, create once on app startup
+        # seed_forums()   # seed frums, create once on app startup
 
     # ProxyFix LAST, after everything is configured
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
