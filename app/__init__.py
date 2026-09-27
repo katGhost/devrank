@@ -13,7 +13,8 @@ from app.blueprints.user import user_bp
 from app.blueprints.community import forum_bp
 from app.blueprints.projects import projects_bp
 from app.blueprints.auth.oauth import init_oauth
-from app.extensions import db, migrate
+from app.extensions import db, migrate, cache
+from app.services.forum_service import seed_forums
 
 
 def create_app():
@@ -32,6 +33,7 @@ def create_app():
     )
 
     # Initialize extensions
+    cache.init_app(app, config={ 'CACHE_TYPE': 'SimpleCache' })
     db.init_app(app)
     init_oauth(app)
     
@@ -50,6 +52,7 @@ def create_app():
     # Create tables if they do not exist
     with app.app_context():
         db.create_all()
+        seed_forums()   # seed frums, create once on app startup
 
     # ProxyFix LAST, after everything is configured
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
