@@ -6,21 +6,7 @@
 
     <!-- Left Sidebar -->
     <aside class="forum-sidebar">
-        <nav class="forum-nav">
-            <a href="{{ url_for('forum.forum_home') }}"
-                class="forum-nav-item {% if not active_category %}active{% endif %}">
-                Feed
-            </a>
-
-            <span class="forum-nav-label">Forums</span>
-
-            {% for forum in forums %}
-            <a href="{{ url_for('forum.forum_posts', forum_name=forum.name) }}"
-                class="forum-nav-item {% if active_category == forum.name %}active{% endif %}">
-                {{ forum.name }}
-            </a>
-            {% endfor %}
-        </nav>
+        {% include "_forum_sidebar.html" %}
     </aside>
 
   <!-- Main Feed -->

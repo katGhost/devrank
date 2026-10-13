@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.extensions import db
 
 class User(db.Model):
@@ -159,4 +159,71 @@ class Comment(db.Model):
 
     def __repr__(self):
         return f"<Comment id={self.id} post_id={self.post_id}>"
+
+
+# Belonging | Hackathons
+class Hackathon(db.Model):
+    __tablename__ = 'hackathons'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Where this record came from, so more sources can be added later
+    # without breaking existing rows.
+    source = db.Column(db.String(32), nullable=False, default='devpost')
+    external_id = db.Column(db.String(64), nullable=False)
+
+    title = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.String(512), nullable=False, unique=True, index=True)
+    organization_name = db.Column(db.String(255), nullable=True)
+    location_label = db.Column(db.String(255), nullable=True)
+    is_virtual = db.Column(db.Boolean, default=False, nullable=False)
+    is_in_person = db.Column(db.Boolean, default=False, nullable=False)
+    region = db.Column(db.String(64), nullable=True, index=True)
+
+    # 'upcoming' | 'open' | 'ended' -- taken directly from the source
+    open_state = db.Column(db.String(32), nullable=False, default='upcoming', index=True)
+
+    submission_period_dates = db.Column(db.String(128), nullable=True)
+    prize_amount = db.Column(db.String(128), nullable=True)
+    themes = db.Column(db.String(255), nullable=True)
+    thumbnail_url = db.Column(db.String(512), nullable=True)
+
+    # first_seen_at stands in for "published": the source API does not expose
+    # a listing date, so recency is measured from when our own scraper first
+    # discovered the hackathon. last_seen_at is refreshed on every scrape a
+    # hackathon still appears in, so stale/delisted rows can be pruned.
+    first_seen_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('source', 'external_id', name='uq_hackathon_source_external_id'),
+    )
+
+    def is_recent(self, days=14):
+        return (datetime.utcnow() - self.first_seen_at) <= timedelta(days=days)
+
+    def is_open(self):
+        return self.open_state in ('open', 'upcoming')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'url': self.url,
+            'organization_name': self.organization_name,
+            'location_label': self.location_label,
+            'is_virtual': self.is_virtual,
+            'is_in_person': self.is_in_person,
+            'region': self.region,
+            'open_state': self.open_state,
+            'submission_period_dates': self.submission_period_dates,
+            'prize_amount': self.prize_amount,
+            'themes': self.themes,
+            'thumbnail_url': self.thumbnail_url,
+            'first_seen_at': self.first_seen_at.isoformat(),
+            'is_recent': self.is_recent(),
+        }
+
+    def __repr__(self):
+        return f"<Hackathon id={self.id} title={self.title}>"
 

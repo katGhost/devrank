@@ -24,6 +24,7 @@ def forum_home():
         posts=posts,
         trending_posts=trending_posts,
         active_category=None,
+        active_tab='feed',
         forums=forums,
         comments=comments
     )
@@ -82,5 +83,6 @@ def forum_posts(forum_name):
         posts=posts,
         trending_posts=trending_posts,
         active_category=forum_name,
+        active_tab='feed',
         forums=forums
     )

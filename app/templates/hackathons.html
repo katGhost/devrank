@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Hackathons{% endblock %}
+
+{% block content %}
+<div class="forum-layout">
+
+    <!-- Left Sidebar -->
+    <aside class="forum-sidebar">
+        {% include "_forum_sidebar.html" %}
+    </aside>
+
+    <!-- Main -->
+    <main class="forum-feed">
+        <div class="forum-feed-header">
+            <h1 class="forum-feed-title">Hackathons</h1>
+            <div class="forum-feed-actions">
+                <a href="{{ url_for('forum.forum_home') }}" class="btn-new-post">
+                    Back to Feed
+                </a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="posts">
+
+                <form method="GET" action="{{ url_for('hackathons.hackathons_home') }}" class="hackathon-filters">
+                    <div class="hackathon-filter-group">
+                        <label for="region">Region</label>
+                        <select name="region" id="region" class="hackathon-filter-select">
+                            <option value="">All regions</option>
+                            {% for region in regions %}
+                            <option value="{{ region }}" {% if selected_region == region %}selected{% endif %}>
+                                {{ region }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="hackathon-filter-group">
+                        <label for="mode">Format</label>
+                        <select name="mode" id="mode" class="hackathon-filter-select">
+                            <option value="" {% if not selected_mode %}selected{% endif %}>All formats</option>
+                            <option value="virtual" {% if selected_mode == 'virtual' %}selected{% endif %}>Virtual</option>
+                            <option value="in_person" {% if selected_mode == 'in_person' %}selected{% endif %}>In-person</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-new-post">Apply</button>
+                </form>
+
+                <div class="hackathon-list">
+                    {% for hackathon in hackathons %}
+                    <div class="hackathon-card">
+                        <div class="hackathon-card-header">
+                            <h3 class="hackathon-card-title">{{ hackathon.title }}</h3>
+                            {% if hackathon.is_recent() %}
+                            <span class="hackathon-badge hackathon-badge-new">New</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="hackathon-card-meta">
+                            {% if hackathon.organization_name %}
+                            <span class="hackathon-card-org">{{ hackathon.organization_name }}</span>
+                            {% endif %}
+                            {% if hackathon.region %}
+                            <span class="hackathon-badge hackathon-badge-region">{{ hackathon.region }}</span>
+                            {% endif %}
+                            <span class="hackathon-badge {% if hackathon.is_virtual %}hackathon-badge-virtual{% else %}hackathon-badge-in-person{% endif %}">
+                                {{ 'Virtual' if hackathon.is_virtual else 'In-person' }}
+                            </span>
+                            <span class="hackathon-badge hackathon-badge-{{ hackathon.open_state }}">
+                                {{ hackathon.open_state | capitalize }}
+                            </span>
+                        </div>
+
+                        {% if hackathon.submission_period_dates %}
+                        <p class="hackathon-card-dates">{{ hackathon.submission_period_dates }}</p>
+                        {% endif %}
+
+                        {% if hackathon.themes %}
+                        <p class="hackathon-card-themes">{{ hackathon.themes }}</p>
+                        {% endif %}
+
+                        <div class="hackathon-card-footer">
+                            {% if hackathon.prize_amount %}
+                            <span class="hackathon-card-prize">{{ hackathon.prize_amount }}</span>
+                            {% endif %}
+                            <a href="{{ hackathon.url }}" target="_blank" rel="noopener noreferrer" class="hackathon-card-link">
+                                View hackathon
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-posts">
+                        <p class="empty-posts-text">No hackathons match these filters right now. Check back after the next weekly scrape.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+</div>
+{% endblock %}

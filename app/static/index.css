@@ -1097,3 +1097,156 @@ tr:hover {
     box-shadow: 0 12px 35px rgba(252, 252, 252, 0.4);
   }
 }
+
+/* ================== HACKATHONS ==================== */
+
+.hackathon-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 15px;
+  padding: 15px;
+  background: #13161d;
+  border: 1.2px solid #232C38;
+  border-radius: 12px;
+}
+
+.hackathon-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hackathon-filter-group label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.hackathon-filter-select {
+  background: #1a1f2b;
+  border: 1.2px solid #232C38;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.hackathon-filter-select:focus {
+  border-color: #09B83E;
+}
+
+.hackathon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hackathon-card {
+  background: #13161d;
+  border: 1.2px solid #232C38;
+  border-radius: 12px;
+  padding: 18px 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hackathon-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hackathon-card-title {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.hackathon-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hackathon-card-org {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.825rem;
+}
+
+.hackathon-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.hackathon-badge-new {
+  color: #09B83E;
+  background: rgba(9, 184, 62, 0.12);
+}
+
+.hackathon-badge-region {
+  color: #6C63FF;
+  background: rgba(108, 99, 255, 0.12);
+}
+
+.hackathon-badge-virtual {
+  color: #4ADE80;
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.hackathon-badge-in-person {
+  color: #EFBF04;
+  background: rgba(239, 191, 4, 0.12);
+}
+
+.hackathon-badge-open,
+.hackathon-badge-upcoming {
+  color: #09B83E;
+  background: rgba(9, 184, 62, 0.12);
+}
+
+.hackathon-badge-ended {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hackathon-card-dates,
+.hackathon-card-themes {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.825rem;
+  margin: 0;
+}
+
+.hackathon-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.hackathon-card-prize {
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.hackathon-card-link {
+  color: #09B83E;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hackathon-card-link:hover {
+  text-decoration: underline;
+  color: #09B83E;
+}

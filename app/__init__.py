@@ -12,6 +12,7 @@ from app.blueprints.leaderboard import lead_bp
 from app.blueprints.user import user_bp
 from app.blueprints.community import forum_bp
 from app.blueprints.projects import projects_bp
+from app.blueprints.hackathons import hackathons_bp
 from app.blueprints.auth.oauth import init_oauth
 from app.extensions import db, migrate, cache
 from app.services.forum_service import seed_forums
@@ -50,6 +51,7 @@ def create_app():
     app.register_blueprint(forum_bp, url_prefix='/community')
     app.register_blueprint(projects_bp, url_prefix='/projects')
     app.register_blueprint(user_bp, url_prefix='/user')
+    app.register_blueprint(hackathons_bp, url_prefix='/community/hackathons')
 
     # Create tables if they do not exist
     with app.app_context():
@@ -58,6 +60,13 @@ def create_app():
 
     # ProxyFix LAST, after everything is configured
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+    @app.cli.command("scrape-hackathons")
+    def scrape_hackathons_command():
+        """Scrape Devpost for Africa / South Africa hackathons. Run weekly."""
+        from app.services.hackathon_scraper import scrape_hackathons
+        summary = scrape_hackathons()
+        print(f"Hackathon scrape complete: {summary}")
 
     return app
 

@@ -1,0 +1,19 @@
+<nav class="forum-nav">
+    <a href="{{ url_for('forum.forum_home') }}"
+        class="forum-nav-item {% if active_tab == 'feed' and not active_category %}active{% endif %}">
+        Feed
+    </a>
+    <a href="{{ url_for('hackathons.hackathons_home') }}"
+        class="forum-nav-item {% if active_tab == 'hackathons' %}active{% endif %}">
+        Hackathons
+    </a>
+
+    <span class="forum-nav-label">Forums</span>
+
+    {% for forum in forums %}
+    <a href="{{ url_for('forum.forum_posts', forum_name=forum.name) }}"
+        class="forum-nav-item {% if active_category == forum.name %}active{% endif %}">
+        {{ forum.name }}
+    </a>
+    {% endfor %}
+</nav>
