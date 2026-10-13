@@ -1,0 +1,1027 @@
+From e339e330a89e8fd6940fccd90933c7b89123c071 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 13 Oct 2026 10:05:38 +0200
+Subject: [PATCH] Add hackathons scraping feature
+
+- Hackathon model + migration (source/external_id dedupe, region,
+  open_state, virtual/in-person, first_seen_at as the "published" proxy)
+- hackathon_scraper.py: polite Devpost adapter -- descriptive User-Agent,
+  MAX_RETRIES=3 w/ exponential backoff + jitter on timeouts/429/5xx,
+  graceful skip (no retry) on 4xx client errors, TTL response cache,
+  rate-limit delay between requests, searches "Africa" + "South Africa"
+- hackathon_service.py: region + virtual/in-person filtering, excludes
+  ended hackathons by default, always orders recent-first
+- hackathons blueprint nested under /community/hackathons: HTML page +
+  simple JSON API, both session-gated like the rest of community
+- Hackathons tab added to the forum sidebar via a shared
+  _forum_sidebar.html partial (forum.html and hackathons.html both use it)
+- flask scrape-hackathons CLI command + weekly GitHub Actions workflow
+  (Monday 06:00 UTC, manually triggerable)
+
+Verified: app boots and registers the blueprint, normalize/upsert logic
+checked against a live-captured Devpost record (HTML stripped from
+prize_amount, region derivation, virtual/in-person split), dedupe is
+idempotent on re-scrape, ended hackathons are excluded, region/mode
+filters and recent-first ordering all pass, routes render and the
+JSON API returns the expected payload. Retry/backoff path exercised
+live via this sandbox's network restrictions (3 attempts then a clean
+graceful give-up, no crash).
+
+Not yet run: `flask db upgrade` against the real database -- do that
+before deploying.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XJ5R4eBS6A6UY1BBudAnnA
+---
+ .github/workflows/scrape-hackathons.yml       |  30 +++
+ app/__init__.py                               |   9 +
+ app/blueprints/community/routes.py            |   2 +
+ app/blueprints/hackathons/__init__.py         |   5 +
+ app/blueprints/hackathons/routes.py           |  55 +++++
+ app/models.py                                 |  69 +++++-
+ app/services/hackathon_scraper.py             | 208 ++++++++++++++++++
+ app/services/hackathon_service.py             | 111 ++++++++++
+ app/static/index.css                          | 153 +++++++++++++
+ app/templates/_forum_sidebar.html             |  19 ++
+ app/templates/forum.html                      |  16 +-
+ app/templates/hackathons.html                 | 105 +++++++++
+ .../9a3f2c7d5e4b_add_hackathons_table.py      |  63 ++++++
+ 13 files changed, 829 insertions(+), 16 deletions(-)
+ create mode 100644 .github/workflows/scrape-hackathons.yml
+ create mode 100644 app/blueprints/hackathons/__init__.py
+ create mode 100644 app/blueprints/hackathons/routes.py
+ create mode 100644 app/services/hackathon_scraper.py
+ create mode 100644 app/services/hackathon_service.py
+ create mode 100644 app/templates/_forum_sidebar.html
+ create mode 100644 app/templates/hackathons.html
+ create mode 100644 migrations/versions/9a3f2c7d5e4b_add_hackathons_table.py
+
+diff --git a/.github/workflows/scrape-hackathons.yml b/.github/workflows/scrape-hackathons.yml
+new file mode 100644
+index 0000000..ed092f5
+--- /dev/null
++++ b/.github/workflows/scrape-hackathons.yml
+@@ -0,0 +1,30 @@
++name: Scrape hackathons
++
++on:
++  schedule:
++    # Every Monday at 06:00 UTC -- weekly, per the hackathon feature spec.
++    - cron: '0 6 * * 1'
++  workflow_dispatch: {}   # allows a manual run from the Actions tab
++
++jobs:
++  scrape:
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++
++      - uses: actions/setup-python@v5
++        with:
++          python-version: '3.12'
++
++      - name: Install dependencies
++        run: pip install -r requirements.txt
++
++      - name: Run weekly hackathon scrape
++        env:
++          SECRET_KEY: ${{ secrets.SECRET_KEY }}
++          DATABASE_URL: ${{ secrets.DATABASE_URL }}
++          AUTH0_CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
++          AUTH0_CLIENT_SECRET: ${{ secrets.AUTH0_CLIENT_SECRET }}
++          AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
++          FLASK_APP: run.py
++        run: flask scrape-hackathons
+diff --git a/app/__init__.py b/app/__init__.py
+index c6e418c..380a8b2 100644
+--- a/app/__init__.py
++++ b/app/__init__.py
+@@ -12,6 +12,7 @@ from app.blueprints.leaderboard import lead_bp
+ from app.blueprints.user import user_bp
+ from app.blueprints.community import forum_bp
+ from app.blueprints.projects import projects_bp
++from app.blueprints.hackathons import hackathons_bp
+ from app.blueprints.auth.oauth import init_oauth
+ from app.extensions import db, migrate, cache
+ from app.services.forum_service import seed_forums
+@@ -50,6 +51,7 @@ def create_app():
+     app.register_blueprint(forum_bp, url_prefix='/community')
+     app.register_blueprint(projects_bp, url_prefix='/projects')
+     app.register_blueprint(user_bp, url_prefix='/user')
++    app.register_blueprint(hackathons_bp, url_prefix='/community/hackathons')
+ 
+     # Create tables if they do not exist
+     with app.app_context():
+@@ -59,6 +61,13 @@ def create_app():
+     # ProxyFix LAST, after everything is configured
+     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+ 
++    @app.cli.command("scrape-hackathons")
++    def scrape_hackathons_command():
++        """Scrape Devpost for Africa / South Africa hackathons. Run weekly."""
++        from app.services.hackathon_scraper import scrape_hackathons
++        summary = scrape_hackathons()
++        print(f"Hackathon scrape complete: {summary}")
++
+     return app
+ 
+ 
+diff --git a/app/blueprints/community/routes.py b/app/blueprints/community/routes.py
+index 0f5b0a2..ddf8564 100644
+--- a/app/blueprints/community/routes.py
++++ b/app/blueprints/community/routes.py
+@@ -24,6 +24,7 @@ def forum_home():
+         posts=posts,
+         trending_posts=trending_posts,
+         active_category=None,
++        active_tab='feed',
+         forums=forums,
+         comments=comments
+     )
+@@ -82,5 +83,6 @@ def forum_posts(forum_name):
+         posts=posts,
+         trending_posts=trending_posts,
+         active_category=forum_name,
++        active_tab='feed',
+         forums=forums
+     )
+diff --git a/app/blueprints/hackathons/__init__.py b/app/blueprints/hackathons/__init__.py
+new file mode 100644
+index 0000000..e0fdbd5
+--- /dev/null
++++ b/app/blueprints/hackathons/__init__.py
+@@ -0,0 +1,5 @@
++from flask import Blueprint
++
++hackathons_bp = Blueprint('hackathons', __name__, template_folder='templates', static_folder='static')
++
++from app.blueprints.hackathons import routes
+diff --git a/app/blueprints/hackathons/routes.py b/app/blueprints/hackathons/routes.py
+new file mode 100644
+index 0000000..b91c3f4
+--- /dev/null
++++ b/app/blueprints/hackathons/routes.py
+@@ -0,0 +1,55 @@
++from flask import render_template, request, redirect, url_for, session, jsonify
++
++from app.blueprints.hackathons import hackathons_bp
++from app.services.hackathon_service import get_hackathons, get_available_regions
++from app.services.forum_service import get_all_forums
++
++VALID_MODES = ('virtual', 'in_person')
++
++
++def _parse_filters():
++    region = request.args.get('region') or None
++    mode = request.args.get('mode') or None
++    if mode not in VALID_MODES:
++        mode = None
++    return region, mode
++
++
++@hackathons_bp.route('/')
++def hackathons_home():
++    if 'user_id' not in session:
++        return redirect(url_for('main.home'))
++
++    region, mode = _parse_filters()
++
++    hackathons = get_hackathons(region=region, mode=mode)
++    regions = get_available_regions()
++    forums = get_all_forums()
++
++    return render_template(
++        'hackathons.html',
++        hackathons=hackathons,
++        regions=regions,
++        selected_region=region,
++        selected_mode=mode,
++        forums=forums,
++        active_tab='hackathons',
++        active_category=None,
++    )
++
++
++@hackathons_bp.route('/api')
++def hackathons_api():
++    """Simple JSON feed of currently open hackathons, newest first."""
++    if 'user_id' not in session:
++        return jsonify({'error': 'authentication required'}), 401
++
++    region, mode = _parse_filters()
++    hackathons = get_hackathons(region=region, mode=mode)
++
++    return jsonify({
++        'count': len(hackathons),
++        'region': region,
++        'mode': mode,
++        'hackathons': [h.to_dict() for h in hackathons],
++    })
+diff --git a/app/models.py b/app/models.py
+index ae784f8..3698b9d 100644
+--- a/app/models.py
++++ b/app/models.py
+@@ -1,4 +1,4 @@
+-from datetime import datetime
++from datetime import datetime, timedelta
+ from app.extensions import db
+ 
+ class User(db.Model):
+@@ -160,3 +160,70 @@ class Comment(db.Model):
+     def __repr__(self):
+         return f"<Comment id={self.id} post_id={self.post_id}>"
+ 
++
++# Belonging | Hackathons
++class Hackathon(db.Model):
++    __tablename__ = 'hackathons'
++
++    id = db.Column(db.Integer, primary_key=True)
++
++    # Where this record came from, so more sources can be added later
++    # without breaking existing rows.
++    source = db.Column(db.String(32), nullable=False, default='devpost')
++    external_id = db.Column(db.String(64), nullable=False)
++
++    title = db.Column(db.String(255), nullable=False)
++    url = db.Column(db.String(512), nullable=False, unique=True, index=True)
++    organization_name = db.Column(db.String(255), nullable=True)
++    location_label = db.Column(db.String(255), nullable=True)
++    is_virtual = db.Column(db.Boolean, default=False, nullable=False)
++    is_in_person = db.Column(db.Boolean, default=False, nullable=False)
++    region = db.Column(db.String(64), nullable=True, index=True)
++
++    # 'upcoming' | 'open' | 'ended' -- taken directly from the source
++    open_state = db.Column(db.String(32), nullable=False, default='upcoming', index=True)
++
++    submission_period_dates = db.Column(db.String(128), nullable=True)
++    prize_amount = db.Column(db.String(128), nullable=True)
++    themes = db.Column(db.String(255), nullable=True)
++    thumbnail_url = db.Column(db.String(512), nullable=True)
++
++    # first_seen_at stands in for "published": the source API does not expose
++    # a listing date, so recency is measured from when our own scraper first
++    # discovered the hackathon. last_seen_at is refreshed on every scrape a
++    # hackathon still appears in, so stale/delisted rows can be pruned.
++    first_seen_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
++    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
++
++    __table_args__ = (
++        db.UniqueConstraint('source', 'external_id', name='uq_hackathon_source_external_id'),
++    )
++
++    def is_recent(self, days=14):
++        return (datetime.utcnow() - self.first_seen_at) <= timedelta(days=days)
++
++    def is_open(self):
++        return self.open_state in ('open', 'upcoming')
++
++    def to_dict(self):
++        return {
++            'id': self.id,
++            'title': self.title,
++            'url': self.url,
++            'organization_name': self.organization_name,
++            'location_label': self.location_label,
++            'is_virtual': self.is_virtual,
++            'is_in_person': self.is_in_person,
++            'region': self.region,
++            'open_state': self.open_state,
++            'submission_period_dates': self.submission_period_dates,
++            'prize_amount': self.prize_amount,
++            'themes': self.themes,
++            'thumbnail_url': self.thumbnail_url,
++            'first_seen_at': self.first_seen_at.isoformat(),
++            'is_recent': self.is_recent(),
++        }
++
++    def __repr__(self):
++        return f"<Hackathon id={self.id} title={self.title}>"
++
+diff --git a/app/services/hackathon_scraper.py b/app/services/hackathon_scraper.py
+new file mode 100644
+index 0000000..04b40a3
+--- /dev/null
++++ b/app/services/hackathon_scraper.py
+@@ -0,0 +1,208 @@
++import re
++import time
++import random
++import requests
++from cachetools import TTLCache
++
++_TAG_RE = re.compile(r'<[^>]+>')
++
++
++def _strip_html(value):
++    """Devpost embeds markup in a few text fields (e.g. prize_amount);
++    strip it so we never store or render raw third-party HTML."""
++    if not value:
++        return value
++    return _TAG_RE.sub('', value).strip()
++
++from app.extensions import db
++from app.services.hackathon_service import upsert_hackathon
++
++DEVPOST_API_URL = "https://devpost.com/api/hackathons"
++SEARCH_KEYWORDS = ["Africa", "South Africa"]
++
++MAX_RETRIES = 3
++REQUEST_TIMEOUT = 10
++BASE_BACKOFF_SECONDS = 1.5
++REQUEST_DELAY_SECONDS = 1.0   # politeness delay between requests
++MAX_PAGES_PER_KEYWORD = 10    # safety cap so a bad response can't loop forever
++
++HEADERS = {
++    'User-Agent': (
++        'DevRankBot/1.0 (+https://github.com/katGhost/devrank; '
++        'hackathon discovery for African developers)'
++    ),
++    'Accept': 'application/json',
++}
++
++# Short-lived in-memory cache so re-running the scraper twice in quick
++# succession (e.g. a manual run right after the weekly cron) does not
++# re-hit pages it already fetched a few minutes ago.
++_page_cache = TTLCache(maxsize=200, ttl=600)
++
++
++def _get_with_retries(session, params):
++    """
++    Fetch one page politely.
++
++    Transient failures (timeouts, connection errors, 429, 5xx) are retried
++    up to MAX_RETRIES with exponential backoff plus jitter. A 4xx error
++    other than 429 is a client error -- retrying will not fix it -- so it
++    is logged and skipped instead of hammering the server.
++    """
++    cache_key = tuple(sorted(params.items()))
++    if cache_key in _page_cache:
++        return _page_cache[cache_key]
++
++    last_error = None
++
++    for attempt in range(1, MAX_RETRIES + 1):
++        try:
++            response = session.get(
++                DEVPOST_API_URL,
++                params=params,
++                headers=HEADERS,
++                timeout=REQUEST_TIMEOUT,
++            )
++
++            if response.status_code == 429 or response.status_code >= 500:
++                last_error = f"HTTP {response.status_code}"
++                raise requests.exceptions.RequestException(last_error)
++
++            if 400 <= response.status_code < 500:
++                # e.g. a malformed query or a page past the end -- will not
++                # resolve on retry, so skip this page gracefully.
++                print(f"Hackathon scraper: client error {response.status_code} for {params}, skipping")
++                return None
++
++            response.raise_for_status()
++            data = response.json()
++            _page_cache[cache_key] = data
++            return data
++
++        except (requests.exceptions.RequestException, ValueError) as e:
++            last_error = str(e)
++            if attempt < MAX_RETRIES:
++                backoff = BASE_BACKOFF_SECONDS * (2 ** (attempt - 1))
++                backoff += random.uniform(0, 0.5)  # jitter avoids a thundering herd
++                time.sleep(backoff)
++
++    print(f"Hackathon scraper: giving up on {params} after {MAX_RETRIES} attempts ({last_error})")
++    return None
++
++
++def _derive_region(title, organization_name, location_label):
++    haystack = " ".join(filter(None, [title, organization_name, location_label])).lower()
++    if 'south africa' in haystack:
++        return 'South Africa'
++    if 'africa' in haystack:
++        return 'Africa'
++    return None
++
++
++def _normalize(raw, keyword):
++    """Map a raw Devpost hackathon object onto our Hackathon fields."""
++    location = (raw.get('displayed_location') or {}).get('location', '') or ''
++    is_virtual = location.strip().lower() == 'online'
++
++    region = _derive_region(raw.get('title', ''), raw.get('organization_name', ''), location)
++    if not region:
++        # Devpost's search is fuzzy, so a result can match the query without
++        # literally containing "Africa" in its text. Fall back to the
++        # keyword that surfaced it rather than dropping the result.
++        region = 'South Africa' if keyword == 'South Africa' else 'Africa'
++
++    theme_names = ", ".join(
++        t.get('name', '') for t in (raw.get('themes') or []) if t.get('name')
++    )
++
++    return {
++        'source': 'devpost',
++        'external_id': str(raw['id']),
++        'title': (raw.get('title') or '').strip(),
++        'url': (raw.get('url') or '').strip(),
++        'organization_name': raw.get('organization_name'),
++        'location_label': location or None,
++        'is_virtual': is_virtual,
++        'is_in_person': not is_virtual,
++        'region': region,
++        'open_state': raw.get('open_state', 'upcoming'),
++        'submission_period_dates': raw.get('submission_period_dates'),
++        'prize_amount': _strip_html(raw.get('prize_amount')),
++        'themes': theme_names or None,
++        'thumbnail_url': raw.get('thumbnail_url'),
++    }
++
++
++def _fetch_keyword(session, keyword):
++    """Page through every result for one search keyword."""
++    results = []
++    page = 1
++
++    while page <= MAX_PAGES_PER_KEYWORD:
++        data = _get_with_retries(session, {'search': keyword, 'page': page})
++        if data is None:
++            break
++
++        hackathons = data.get('hackathons', [])
++        if not hackathons:
++            break
++
++        results.extend(hackathons)
++
++        meta = data.get('meta', {})
++        total_count = meta.get('total_count', 0)
++        per_page = meta.get('per_page', len(hackathons) or 1)
++        if page * per_page >= total_count:
++            break
++
++        page += 1
++        time.sleep(REQUEST_DELAY_SECONDS)
++
++    return results
++
++
++def scrape_hackathons():
++    """
++    Weekly entry point: search Devpost for Africa / South Africa hackathons,
++    normalize and upsert each into the database.
++
++    Safe to call manually too -- a 400/429/5xx on one keyword or page does
++    not stop the others, so a single bad response degrades the run instead
++    of failing it outright.
++
++    Returns a summary dict: {'created', 'updated', 'seen', 'errors'}.
++    """
++    session = requests.Session()
++    summary = {'created': 0, 'updated': 0, 'seen': 0, 'errors': 0}
++    seen_urls = set()
++
++    for keyword in SEARCH_KEYWORDS:
++        try:
++            raw_results = _fetch_keyword(session, keyword)
++        except Exception as e:
++            print(f"Hackathon scraper: unexpected failure on keyword '{keyword}': {e}")
++            summary['errors'] += 1
++            continue
++
++        for raw in raw_results:
++            try:
++                url = raw.get('url')
++                if not url or url in seen_urls:
++                    continue  # dedupe across overlapping keyword searches
++                seen_urls.add(url)
++
++                normalized = _normalize(raw, keyword)
++                if not normalized['title'] or not normalized['url']:
++                    continue
++
++                _, created = upsert_hackathon(normalized)
++                summary['seen'] += 1
++                summary['created' if created else 'updated'] += 1
++            except Exception as e:
++                print(f"Hackathon scraper: failed to process result {raw.get('id')}: {e}")
++                summary['errors'] += 1
++
++        time.sleep(REQUEST_DELAY_SECONDS)
++
++    db.session.commit()
++    return summary
+diff --git a/app/services/hackathon_service.py b/app/services/hackathon_service.py
+new file mode 100644
+index 0000000..dea9329
+--- /dev/null
++++ b/app/services/hackathon_service.py
+@@ -0,0 +1,111 @@
++from datetime import datetime, timedelta
++from app.extensions import db
++from app.models import Hackathon
++
++RECENT_WINDOW_DAYS = 14
++OPEN_STATES = ('open', 'upcoming')
++
++
++def upsert_hackathon(data):
++    """
++    Create or update a hackathon from normalized scraper data.
++    Matched on (source, external_id). first_seen_at is set once and never
++    touched again -- it is our proxy for "published". last_seen_at is
++    refreshed every time the scraper still finds the listing.
++    Returns (hackathon, created).
++    """
++    existing = Hackathon.query.filter_by(
++        source=data['source'],
++        external_id=data['external_id']
++    ).first()
++    now = datetime.utcnow()
++
++    if existing:
++        existing.title = data['title']
++        existing.url = data['url']
++        existing.organization_name = data.get('organization_name')
++        existing.location_label = data.get('location_label')
++        existing.is_virtual = data.get('is_virtual', False)
++        existing.is_in_person = data.get('is_in_person', False)
++        existing.region = data.get('region')
++        existing.open_state = data.get('open_state', existing.open_state)
++        existing.submission_period_dates = data.get('submission_period_dates')
++        existing.prize_amount = data.get('prize_amount')
++        existing.themes = data.get('themes')
++        existing.thumbnail_url = data.get('thumbnail_url')
++        existing.last_seen_at = now
++        return existing, False
++
++    hackathon = Hackathon(
++        source=data['source'],
++        external_id=data['external_id'],
++        title=data['title'],
++        url=data['url'],
++        organization_name=data.get('organization_name'),
++        location_label=data.get('location_label'),
++        is_virtual=data.get('is_virtual', False),
++        is_in_person=data.get('is_in_person', False),
++        region=data.get('region'),
++        open_state=data.get('open_state', 'upcoming'),
++        submission_period_dates=data.get('submission_period_dates'),
++        prize_amount=data.get('prize_amount'),
++        themes=data.get('themes'),
++        thumbnail_url=data.get('thumbnail_url'),
++        first_seen_at=now,
++        last_seen_at=now,
++    )
++    db.session.add(hackathon)
++    return hackathon, True
++
++
++def get_hackathons(region=None, mode=None, recent_only=False, open_only=True):
++    """
++    Return hackathons ordered newest-first (first_seen_at desc), so recently
++    discovered ones are always at the top regardless of which filters apply.
++
++    region: exact match against Hackathon.region (e.g. 'Africa', 'South Africa'),
++            or None for all regions.
++    mode: 'virtual', 'in_person', or None for both.
++    recent_only: restrict to hackathons first seen within RECENT_WINDOW_DAYS.
++    open_only: exclude hackathons whose open_state is 'ended' (default True).
++    """
++    query = Hackathon.query
++
++    if open_only:
++        query = query.filter(Hackathon.open_state.in_(OPEN_STATES))
++    if region:
++        query = query.filter(Hackathon.region == region)
++    if mode == 'virtual':
++        query = query.filter(Hackathon.is_virtual.is_(True))
++    elif mode == 'in_person':
++        query = query.filter(Hackathon.is_in_person.is_(True))
++    if recent_only:
++        cutoff = datetime.utcnow() - timedelta(days=RECENT_WINDOW_DAYS)
++        query = query.filter(Hackathon.first_seen_at >= cutoff)
++
++    return query.order_by(Hackathon.first_seen_at.desc()).all()
++
++
++def get_available_regions():
++    """Return distinct regions currently present, to populate the filter dropdown."""
++    rows = (
++        db.session.query(Hackathon.region)
++        .filter(Hackathon.region.isnot(None))
++        .distinct()
++        .all()
++    )
++    return sorted(r[0] for r in rows)
++
++
++def prune_stale(days=60):
++    """
++    Remove hackathons the scraper has not seen in `days`, e.g. delisted or
++    expired entries. Not run automatically -- call from the CLI if the table
++    needs cleaning up.
++    """
++    cutoff = datetime.utcnow() - timedelta(days=days)
++    stale = Hackathon.query.filter(Hackathon.last_seen_at < cutoff).all()
++    for hackathon in stale:
++        db.session.delete(hackathon)
++    db.session.commit()
++    return len(stale)
+diff --git a/app/static/index.css b/app/static/index.css
+index 707973e..422218d 100644
+--- a/app/static/index.css
++++ b/app/static/index.css
+@@ -1097,3 +1097,156 @@ tr:hover {
+     box-shadow: 0 12px 35px rgba(252, 252, 252, 0.4);
+   }
+ }
++
++/* ================== HACKATHONS ==================== */
++
++.hackathon-filters {
++  display: flex;
++  align-items: flex-end;
++  gap: 15px;
++  padding: 15px;
++  background: #13161d;
++  border: 1.2px solid #232C38;
++  border-radius: 12px;
++}
++
++.hackathon-filter-group {
++  display: flex;
++  flex-direction: column;
++  gap: 5px;
++}
++
++.hackathon-filter-group label {
++  color: rgba(255, 255, 255, 0.6);
++  font-size: 0.75rem;
++  font-weight: 600;
++}
++
++.hackathon-filter-select {
++  background: #1a1f2b;
++  border: 1.2px solid #232C38;
++  border-radius: 8px;
++  padding: 8px 12px;
++  color: #fff;
++  font-size: 0.875rem;
++  outline: none;
++  transition: border-color 0.2s ease;
++}
++
++.hackathon-filter-select:focus {
++  border-color: #09B83E;
++}
++
++.hackathon-list {
++  display: flex;
++  flex-direction: column;
++  gap: 12px;
++}
++
++.hackathon-card {
++  background: #13161d;
++  border: 1.2px solid #232C38;
++  border-radius: 12px;
++  padding: 18px 25px;
++  display: flex;
++  flex-direction: column;
++  gap: 8px;
++}
++
++.hackathon-card-header {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++}
++
++.hackathon-card-title {
++  color: #fff;
++  font-size: 1rem;
++  font-weight: 700;
++  margin: 0;
++}
++
++.hackathon-card-meta {
++  display: flex;
++  flex-wrap: wrap;
++  align-items: center;
++  gap: 8px;
++}
++
++.hackathon-card-org {
++  color: rgba(255, 255, 255, 0.6);
++  font-size: 0.825rem;
++}
++
++.hackathon-badge {
++  display: inline-block;
++  font-size: 0.68rem;
++  font-weight: 700;
++  letter-spacing: 0.04em;
++  text-transform: uppercase;
++  border-radius: 4px;
++  padding: 3px 8px;
++}
++
++.hackathon-badge-new {
++  color: #09B83E;
++  background: rgba(9, 184, 62, 0.12);
++}
++
++.hackathon-badge-region {
++  color: #6C63FF;
++  background: rgba(108, 99, 255, 0.12);
++}
++
++.hackathon-badge-virtual {
++  color: #4ADE80;
++  background: rgba(74, 222, 128, 0.12);
++}
++
++.hackathon-badge-in-person {
++  color: #EFBF04;
++  background: rgba(239, 191, 4, 0.12);
++}
++
++.hackathon-badge-open,
++.hackathon-badge-upcoming {
++  color: #09B83E;
++  background: rgba(9, 184, 62, 0.12);
++}
++
++.hackathon-badge-ended {
++  color: rgba(255, 255, 255, 0.5);
++  background: rgba(255, 255, 255, 0.08);
++}
++
++.hackathon-card-dates,
++.hackathon-card-themes {
++  color: rgba(255, 255, 255, 0.6);
++  font-size: 0.825rem;
++  margin: 0;
++}
++
++.hackathon-card-footer {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  margin-top: 6px;
++}
++
++.hackathon-card-prize {
++  color: #fff;
++  font-size: 0.875rem;
++  font-weight: 600;
++}
++
++.hackathon-card-link {
++  color: #09B83E;
++  font-size: 0.8rem;
++  font-weight: 600;
++  text-decoration: none;
++}
++
++.hackathon-card-link:hover {
++  text-decoration: underline;
++  color: #09B83E;
++}
+diff --git a/app/templates/_forum_sidebar.html b/app/templates/_forum_sidebar.html
+new file mode 100644
+index 0000000..8dbd513
+--- /dev/null
++++ b/app/templates/_forum_sidebar.html
+@@ -0,0 +1,19 @@
++<nav class="forum-nav">
++    <a href="{{ url_for('forum.forum_home') }}"
++        class="forum-nav-item {% if active_tab == 'feed' and not active_category %}active{% endif %}">
++        Feed
++    </a>
++    <a href="{{ url_for('hackathons.hackathons_home') }}"
++        class="forum-nav-item {% if active_tab == 'hackathons' %}active{% endif %}">
++        Hackathons
++    </a>
++
++    <span class="forum-nav-label">Forums</span>
++
++    {% for forum in forums %}
++    <a href="{{ url_for('forum.forum_posts', forum_name=forum.name) }}"
++        class="forum-nav-item {% if active_category == forum.name %}active{% endif %}">
++        {{ forum.name }}
++    </a>
++    {% endfor %}
++</nav>
+diff --git a/app/templates/forum.html b/app/templates/forum.html
+index 7dd8431..fd0966d 100644
+--- a/app/templates/forum.html
++++ b/app/templates/forum.html
+@@ -6,21 +6,7 @@
+ 
+     <!-- Left Sidebar -->
+     <aside class="forum-sidebar">
+-        <nav class="forum-nav">
+-            <a href="{{ url_for('forum.forum_home') }}"
+-                class="forum-nav-item {% if not active_category %}active{% endif %}">
+-                Feed
+-            </a>
+-
+-            <span class="forum-nav-label">Forums</span>
+-
+-            {% for forum in forums %}
+-            <a href="{{ url_for('forum.forum_posts', forum_name=forum.name) }}"
+-                class="forum-nav-item {% if active_category == forum.name %}active{% endif %}">
+-                {{ forum.name }}
+-            </a>
+-            {% endfor %}
+-        </nav>
++        {% include "_forum_sidebar.html" %}
+     </aside>
+ 
+   <!-- Main Feed -->
+diff --git a/app/templates/hackathons.html b/app/templates/hackathons.html
+new file mode 100644
+index 0000000..75262c6
+--- /dev/null
++++ b/app/templates/hackathons.html
+@@ -0,0 +1,105 @@
++{% extends "base.html" %}
++{% block title %}Hackathons{% endblock %}
++
++{% block content %}
++<div class="forum-layout">
++
++    <!-- Left Sidebar -->
++    <aside class="forum-sidebar">
++        {% include "_forum_sidebar.html" %}
++    </aside>
++
++    <!-- Main -->
++    <main class="forum-feed">
++        <div class="forum-feed-header">
++            <h1 class="forum-feed-title">Hackathons</h1>
++            <div class="forum-feed-actions">
++                <a href="{{ url_for('forum.forum_home') }}" class="btn-new-post">
++                    Back to Feed
++                </a>
++            </div>
++        </div>
++
++        <div class="main-content">
++            <div class="posts">
++
++                <form method="GET" action="{{ url_for('hackathons.hackathons_home') }}" class="hackathon-filters">
++                    <div class="hackathon-filter-group">
++                        <label for="region">Region</label>
++                        <select name="region" id="region" class="hackathon-filter-select">
++                            <option value="">All regions</option>
++                            {% for region in regions %}
++                            <option value="{{ region }}" {% if selected_region == region %}selected{% endif %}>
++                                {{ region }}
++                            </option>
++                            {% endfor %}
++                        </select>
++                    </div>
++
++                    <div class="hackathon-filter-group">
++                        <label for="mode">Format</label>
++                        <select name="mode" id="mode" class="hackathon-filter-select">
++                            <option value="" {% if not selected_mode %}selected{% endif %}>All formats</option>
++                            <option value="virtual" {% if selected_mode == 'virtual' %}selected{% endif %}>Virtual</option>
++                            <option value="in_person" {% if selected_mode == 'in_person' %}selected{% endif %}>In-person</option>
++                        </select>
++                    </div>
++
++                    <button type="submit" class="btn-new-post">Apply</button>
++                </form>
++
++                <div class="hackathon-list">
++                    {% for hackathon in hackathons %}
++                    <div class="hackathon-card">
++                        <div class="hackathon-card-header">
++                            <h3 class="hackathon-card-title">{{ hackathon.title }}</h3>
++                            {% if hackathon.is_recent() %}
++                            <span class="hackathon-badge hackathon-badge-new">New</span>
++                            {% endif %}
++                        </div>
++
++                        <div class="hackathon-card-meta">
++                            {% if hackathon.organization_name %}
++                            <span class="hackathon-card-org">{{ hackathon.organization_name }}</span>
++                            {% endif %}
++                            {% if hackathon.region %}
++                            <span class="hackathon-badge hackathon-badge-region">{{ hackathon.region }}</span>
++                            {% endif %}
++                            <span class="hackathon-badge {% if hackathon.is_virtual %}hackathon-badge-virtual{% else %}hackathon-badge-in-person{% endif %}">
++                                {{ 'Virtual' if hackathon.is_virtual else 'In-person' }}
++                            </span>
++                            <span class="hackathon-badge hackathon-badge-{{ hackathon.open_state }}">
++                                {{ hackathon.open_state | capitalize }}
++                            </span>
++                        </div>
++
++                        {% if hackathon.submission_period_dates %}
++                        <p class="hackathon-card-dates">{{ hackathon.submission_period_dates }}</p>
++                        {% endif %}
++
++                        {% if hackathon.themes %}
++                        <p class="hackathon-card-themes">{{ hackathon.themes }}</p>
++                        {% endif %}
++
++                        <div class="hackathon-card-footer">
++                            {% if hackathon.prize_amount %}
++                            <span class="hackathon-card-prize">{{ hackathon.prize_amount }}</span>
++                            {% endif %}
++                            <a href="{{ hackathon.url }}" target="_blank" rel="noopener noreferrer" class="hackathon-card-link">
++                                View hackathon
++                            </a>
++                        </div>
++                    </div>
++                    {% else %}
++                    <div class="empty-posts">
++                        <p class="empty-posts-text">No hackathons match these filters right now. Check back after the next weekly scrape.</p>
++                    </div>
++                    {% endfor %}
++                </div>
++
++            </div>
++        </div>
++    </main>
++
++</div>
++{% endblock %}
+diff --git a/migrations/versions/9a3f2c7d5e4b_add_hackathons_table.py b/migrations/versions/9a3f2c7d5e4b_add_hackathons_table.py
+new file mode 100644
+index 0000000..1f0c90f
+--- /dev/null
++++ b/migrations/versions/9a3f2c7d5e4b_add_hackathons_table.py
+@@ -0,0 +1,63 @@
++"""add hackathons table
++
++Revision ID: 9a3f2c7d5e4b
++Revises: 2f09079fa246
++Create Date: 2026-10-13 09:00:00.000000
++
++"""
++from alembic import op
++import sqlalchemy as sa
++
++
++# revision identifiers, used by Alembic.
++revision = '9a3f2c7d5e4b'
++down_revision = '2f09079fa246'
++branch_labels = None
++depends_on = None
++
++
++def upgrade():
++    # ### commands auto generated by Alembic - please adjust! ###
++    op.create_table(
++        'hackathons',
++        sa.Column('id', sa.Integer(), nullable=False),
++        sa.Column('source', sa.String(length=32), nullable=False),
++        sa.Column('external_id', sa.String(length=64), nullable=False),
++        sa.Column('title', sa.String(length=255), nullable=False),
++        sa.Column('url', sa.String(length=512), nullable=False),
++        sa.Column('organization_name', sa.String(length=255), nullable=True),
++        sa.Column('location_label', sa.String(length=255), nullable=True),
++        sa.Column('is_virtual', sa.Boolean(), nullable=False),
++        sa.Column('is_in_person', sa.Boolean(), nullable=False),
++        sa.Column('region', sa.String(length=64), nullable=True),
++        sa.Column('open_state', sa.String(length=32), nullable=False),
++        sa.Column('submission_period_dates', sa.String(length=128), nullable=True),
++        sa.Column('prize_amount', sa.String(length=128), nullable=True),
++        sa.Column('themes', sa.String(length=255), nullable=True),
++        sa.Column('thumbnail_url', sa.String(length=512), nullable=True),
++        sa.Column('first_seen_at', sa.DateTime(), nullable=False),
++        sa.Column('last_seen_at', sa.DateTime(), nullable=False),
++        sa.PrimaryKeyConstraint('id'),
++        sa.UniqueConstraint('source', 'external_id', name='uq_hackathon_source_external_id'),
++        sa.UniqueConstraint('url'),
++    )
++    with op.batch_alter_table('hackathons', schema=None) as batch_op:
++        batch_op.create_index(batch_op.f('ix_hackathons_first_seen_at'), ['first_seen_at'], unique=False)
++        batch_op.create_index(batch_op.f('ix_hackathons_open_state'), ['open_state'], unique=False)
++        batch_op.create_index(batch_op.f('ix_hackathons_region'), ['region'], unique=False)
++        batch_op.create_index(batch_op.f('ix_hackathons_url'), ['url'], unique=True)
++
++    # ### end Alembic commands ###
++
++
++def downgrade():
++    # ### commands auto generated by Alembic - please adjust! ###
++    with op.batch_alter_table('hackathons', schema=None) as batch_op:
++        batch_op.drop_index(batch_op.f('ix_hackathons_url'))
++        batch_op.drop_index(batch_op.f('ix_hackathons_region'))
++        batch_op.drop_index(batch_op.f('ix_hackathons_open_state'))
++        batch_op.drop_index(batch_op.f('ix_hackathons_first_seen_at'))
++
++    op.drop_table('hackathons')
++
++    # ### end Alembic commands ###
+-- 
+2.43.0
+

@@ -27,7 +27,7 @@ def create_app():
     
     app.config['PREFERRED_URL_SCHEME'] = 'https'    # still in dev
     app.config.update(
-        SESSION_COOKIE_SECURE=False,  # Set to True in production with HTTPS
+        SESSION_COOKIE_SECURE=True,  # Set to True in production with HTTPS
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE='Lax',
     )
