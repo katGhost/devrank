@@ -64,6 +64,9 @@ class Project(db.Model):
     description = db.Column(db.Text, nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
 
+    tech_stack = db.Column(db.String(32), nullable=True)
+    github_repo_url = db.Column(db.String(512), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -81,6 +84,9 @@ class Project(db.Model):
 
     def is_full(self):
         return self.member_count() >= self.member_limit()
+
+    def is_scaffolded(self):
+        return bool(self.github_repo_url)
 
     def __repr__(self):
         return f"<Project id={self.id} title={self.title}>"

@@ -41,6 +41,27 @@
 
                     {% elif is_owner %}
                     <p class="text-muted small mb-2">You own this project.</p>
+
+                    {% if project.is_scaffolded() %}
+                    <a href="{{ project.github_repo_url }}" target="_blank" class="btn btn-outline-secondary w-100 mb-2">
+                        View Scaffolded Repo
+                    </a>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('project.project_scaffold', project_id=project.id) }}" class="mb-2">
+                        {% if not project.tech_stack %}
+                        <select class="form-select mb-2" name="tech_stack" required>
+                            <option value="" disabled selected>Choose a tech stack</option>
+                            {% for key, label in stacks %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% endif %}
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            Scaffold to GitHub{% if project.tech_stack %} ({{ project.tech_stack }}){% endif %}
+                        </button>
+                    </form>
+                    {% endif %}
+
                     <form method="POST" action="{{ url_for('project.project_delete', project_id=project.id) }}"
                         onsubmit="return confirm('Delete this project? This cannot be undone.');">
                         <button type="submit" class="btn btn-outline-danger w-100">Delete Project</button>
