@@ -10,11 +10,12 @@ def get_project_by_id(project_id):
     return Project.query.get(project_id)
 
 
-def create_project(owner_id, title, description):
+def create_project(owner_id, title, description, tech_stack=None):
     project = Project(
         title=title.strip(),
         description=description.strip(),
         owner_id=owner_id,
+        tech_stack=tech_stack,
     )
     db.session.add(project)
     db.session.flush()

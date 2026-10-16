@@ -38,6 +38,16 @@
                 required
               ></textarea>
             </div>
+            <div class="mb-4">
+              <label for="tech_stack" class="form-label fw-medium text-white">Tech Stack</label>
+              <select class="form-select" id="tech_stack" name="tech_stack">
+                <option value="">Choose later</option>
+                {% for key, label in stacks %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <p class="text-muted small mt-1 mb-0">Lets you scaffold this project straight to a new GitHub repo once it's created.</p>
+            </div>
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-create-project">Create Project</button>
               <a href="{{ url_for('project.projects_hub') }}" class="btn btn-cancel-project">Cancel</a>
